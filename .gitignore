@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.pkl
+*.log
+logs/
+shared/
+fl_env/
+.env

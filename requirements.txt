@@ -1,0 +1,4 @@
+flwr == 1.18.0
+torch == 2.7.0
+torchvision == 0.22.0
+pyyaml == 6.0.2 

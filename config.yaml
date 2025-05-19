@@ -1,0 +1,9 @@
+all_peers:
+  - client1
+  - client2
+  - client3
+
+port: 9099
+device: auto
+num_rounds: 20
+min_clients: 2

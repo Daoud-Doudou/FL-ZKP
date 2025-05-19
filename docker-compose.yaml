@@ -1,0 +1,32 @@
+version: "3.8"
+
+volumes:
+  shared-data:
+  logs-data:
+services:
+  client1:
+    build: .
+    command: --peer-id client1
+    container_name: client1
+    volumes:
+      - shared-data:/app/shared
+      - logs-data:/app/logs
+    user: "1000:1000"
+  client2:
+    build: .
+    command: --peer-id client2
+    container_name: client2
+    volumes:
+      - shared-data:/app/shared
+      - logs-data:/app/logs
+    user: "1000:1000"
+  client3:
+    build: .
+    command: --peer-id client3
+    container_name: client3
+    volumes:
+      - shared-data:/app/shared
+      - logs-data:/app/logs
+    user: "1000:1000"
+
+
