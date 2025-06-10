@@ -1,5 +1,5 @@
 # choix de l'image de base 
-FROM python:3.10-slim
+FROM python:3.9.5-slim
 
 # Créer un utilisateur non-root pour éviter de lancer le projet en root
 RUN useradd -u 1000 -ms /bin/bash fluser

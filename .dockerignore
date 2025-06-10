@@ -1,6 +1,12 @@
 __pycache__/
 *.pyc
-*.pkl
-logs/
+*.pyo
+*.pyd
+*.log
 .env
+*.sqlite
+logs/
+shared/
+.venv/
 .git/
+
