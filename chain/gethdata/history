@@ -1,0 +1,11 @@
+
+var A0 = "0xC19E4d64CB0657e42D31a87eb8C4D8FccaA07a73";
+miner.setEtherbase(A0)
+eth.coinbase
+dev.mineBlocks(5)
+eth.getBalance("0xC19E4d64CB0657e42D31a87eb8C4D8FccaA07a73")
+web3.fromWei(eth.getBalance("0xC19E4d64CB0657e42D31a87eb8C4D8FccaA07a73"), "ether")
+exit   # pour quitter la console si besoin
+geth --dev \
+dev.mineBlocks(10)
+web3.fromWei(eth.getBalance("0xC19E4d64CB0657e42D31a87eb8C4D8FccaA07a73"), "ether")

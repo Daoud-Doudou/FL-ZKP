@@ -6,3 +6,4 @@ logs/
 shared/
 fl_env/
 .env
+certs/

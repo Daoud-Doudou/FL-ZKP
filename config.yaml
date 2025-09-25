@@ -5,5 +5,5 @@ all_peers:
 
 port: 9099
 device: auto
-num_rounds: 20
+num_rounds: 3
 min_clients: 2

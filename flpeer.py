@@ -8,6 +8,7 @@ from model import Net
 from strategy import MyCustomFedAvg
 from client import FLClient
 from utils.logging_utils import create_log
+from utils.plot_metrics import find_latest_log, plot_metrics
 from typing import Dict, Tuple
 import time
 import socket
@@ -37,18 +38,27 @@ class FLPeer:
 			self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 		else:
 			self.device = torch.device(self.config['device'])
+
 		self.config['device'] = str(self.device)
 
 		self.model = Net().to(self.config['device'])
 		self.is_server = self.config['is_server']
+		self.server = self.config['server'] if self.is_server else None
 
 		# chargement des données
-		self.train_loader, self.val_loader = self.load_data()
+		self.train_loader, self.val_loader = self.load_data()      #    à passer pour le client
 
 		logger.info(f"Pair {self.config['peer_id']} initailisé en tant que {'SERVER' if self.is_server else 'CLIENT'}")
 
 	def load_data(self) -> Tuple[DataLoader, DataLoader]:
 		""" Charge les données MNIST avec un sous ensemble différent pour chaque pair """
+
+		# Si c'est le serveur, il ne charge aucune donnée
+		if self.is_server:
+			logger.info("Serveur : aucune donnée à charger.")
+			return None, None
+		
+		# Si c'est un client, charger les données MNIST
 		transform = transforms.Compose([
 			transforms.ToTensor(),
 			transforms.Normalize((0.1307),(0.3081))
@@ -57,26 +67,32 @@ class FLPeer:
 		full_train = datasets.MNIST(
 			"./data",
 			train = True,
-			download = True,
+			download = True,   
 			transform = transform
 		)
 
 		test_data = datasets.MNIST(
 			"./data",
 			train = False,
+			download = True,  
 			transform = transform
 		)
 
-		# Répartition des données entre clients
-		peer_idx = self.config['all_peers'].index(self.config['peer_id'])
-		n_peers = len(self.config['all_peers'])
+		# Créer une liste de clients (exclut le serveur)
+		client_peers = [pid for pid in self.config['all_peers'] if pid != self.config["server"]]
+		
+		if self.config['peer_id'] not in client_peers:
+			raise ValueError(f"{self.config['peer_id']} n’est pas un client valide")
+
+		# Répartition entre clients
+		peer_idx = client_peers.index(self.config['peer_id'])
+		n_peers = len(client_peers)
 		subset_size = len(full_train) // n_peers
-		indices = range(peer_idx * subset_size, (peer_idx +1) * subset_size)
+		indices = range(peer_idx * subset_size, (peer_idx + 1) * subset_size)
 
 		train_subset = Subset(full_train, indices)
 		val_size = int(0.2 * len(train_subset))
 		train_size = len(train_subset) - val_size
-
 
 		train_set, val_set = torch.utils.data.random_split(
 			train_subset,
@@ -84,8 +100,8 @@ class FLPeer:
 		)
 
 		return (
-			DataLoader(train_set, batch_size = 32, shuffle = True),
-			DataLoader(val_set, batch_size = 32)
+			DataLoader(train_set, batch_size=33, shuffle=True),
+			DataLoader(val_set, batch_size=33)
 		)
 
 
@@ -106,16 +122,42 @@ class FLPeer:
 
 		server_config = ServerConfig(num_rounds = self.config['num_rounds'])
 
-		fl.server.start_server(
-			server_address = f"{self.config['host']}:{self.config['port']}",
-			config = server_config,
-			strategy = strategy
-		)
+
+		# Charger les fichiers TLS en mémoire
+		with open("/app/certs/ca.crt", "rb") as f:
+			server_cert = f.read()
+		with open("/app/certs/server.pem", "rb") as f:
+			server_key = f.read()
+		with open("/app/certs/server.key", "rb") as f:
+			ca_cert = f.read()
+		
+		try:
+			fl.server.start_server(
+				server_address = f"{self.config['host']}:{self.config['port']}",
+				config = server_config,
+				strategy = strategy,
+				certificates = (server_cert, server_key, ca_cert),
+			)
+		except Exception as e:
+			logger.error(f"Erreur lors du démarrage du serveur : {e}", exc_info = True)
+			raise
+		finally:
+			logger.info("Entraînement terminé. Génération des graphiques...")
+			latest_log = find_latest_log()
+			if latest_log:
+				plot_metrics(latest_log)
+			else:
+				logger.warning("Aucun fichier de log trouvé, pas de graphique généré.")
+
+
 
 	def run_client(self):
 		wait_for_server(self.config["host"], self.config["port"])
+
+		# Démarrer le client Flower
 		fl.client.start_numpy_client(
 			server_address = f"{self.config['host']}:{self.config['port']}",
-			client = FLClient(self.model, self.train_loader, self.val_loader, self.device )
+			client = FLClient(self.model, self.train_loader, self.val_loader, self.device, peer_id = self.config["peer_id"]),
+			root_certificates = "/app/certs/ca.crt",
 		)
 

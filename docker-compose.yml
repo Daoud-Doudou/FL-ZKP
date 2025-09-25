@@ -1,32 +1,60 @@
 version: "3.8"
 
-volumes:
-  shared-data:
-  logs-data:
+#volumes:
+#  shared-data:
+#  logs-data:
+
 services:
   client1:
     build: .
-    command: --peer-id client1
     container_name: client1
-    volumes:
-      - shared-data:/app/shared
-      - logs-data:/app/logs
+    command: --peer-id client1
     user: "1000:1000"
+    environment:
+      - ZKP_AUTOPROVE=1
+      - ZKP_PTAU_GEN=1                      # ✅ autorise la génération auto du ptau si manquant
+      - ZKP_PTAU=/app/shared/zkp/ptau/powersOfTau28_hez_final_14.ptau
+      - ZKP_PTAU_POWER=14                   # marge pour ~8k contraintes
+      - ZKP_CIRCUIT_DIR=/app/zkp/avg_chunk
+      - ZKP_CHUNK=4096
+      - ZKP_SCALE=1000000
+    volumes:
+      - ./shared-data:/app/shared
+      - ./logs-data:/app/logs
+      - ./certificates:/app/certs
+
   client2:
     build: .
-    command: --peer-id client2
     container_name: client2
-    volumes:
-      - shared-data:/app/shared
-      - logs-data:/app/logs
+    command: --peer-id client2
     user: "1000:1000"
+    environment:
+      - ZKP_AUTOPROVE=1
+      - ZKP_PTAU_GEN=1                      # ✅ autorise la génération auto du ptau si manquant
+      - ZKP_PTAU=/app/shared/zkp/ptau/powersOfTau28_hez_final_14.ptau
+      - ZKP_PTAU_POWER=14                   # marge pour ~8k contraintes
+      - ZKP_CIRCUIT_DIR=/app/zkp/avg_chunk
+      - ZKP_CHUNK=4096
+      - ZKP_SCALE=1000000
+    volumes:
+      - ./shared-data:/app/shared
+      - ./logs-data:/app/logs
+      - ./certificates:/app/certs
+
   client3:
     build: .
-    command: --peer-id client3
     container_name: client3
-    volumes:
-      - shared-data:/app/shared
-      - logs-data:/app/logs
+    command: --peer-id client3
     user: "1000:1000"
-
-
+    environment:
+      - ZKP_AUTOPROVE=1
+      - ZKP_PTAU_GEN=1                      # ✅ autorise la génération auto du ptau si manquant
+      - ZKP_PTAU=/app/shared/zkp/ptau/powersOfTau28_hez_final_14.ptau
+      - ZKP_PTAU_POWER=14                   # marge pour ~8k contraintes
+      - ZKP_CIRCUIT_DIR=/app/zkp/avg_chunk
+      - ZKP_CHUNK=4096
+      - ZKP_SCALE=1000000
+    volumes:
+      - ./shared-data:/app/shared
+      - ./logs-data:/app/logs
+      - ./certificates:/app/certs
