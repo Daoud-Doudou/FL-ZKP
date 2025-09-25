@@ -7,3 +7,5 @@ shared/
 fl_env/
 .env
 certs/
+logs-data/
+shared-data/
