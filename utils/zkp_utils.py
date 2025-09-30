@@ -6,6 +6,7 @@ import glob
 import shlex
 import subprocess
 from typing import Optional
+from utils.commit_integration import integrate_commitments_for_round
 
 # -------------------------------
 # Paramètres via variables d'environnement (avec valeurs par défaut)
@@ -13,10 +14,10 @@ from typing import Optional
 DEFAULT_SCALE = int(os.environ.get("ZKP_SCALE", "1000000"))
 DEFAULT_CHUNK = int(os.environ.get("ZKP_CHUNK", "4096"))
 CIRCUIT_DIR   = os.environ.get("ZKP_CIRCUIT_DIR", "/app/zkp/avg_chunk")
-PTAU_PATH     = os.environ.get("ZKP_PTAU", "/app/shared/zkp/ptau/powersOfTau28_hez_final_14.ptau")
+PTAU_PATH     = os.environ.get("ZKP_PTAU", "/app/shared/zkp/ptau/powersOfTau28_hez_final_18.ptau")
 AUTOPROVE     = os.environ.get("ZKP_AUTOPROVE", "0") == "1"
 PTAU_GEN      = os.environ.get("ZKP_PTAU_GEN", "0") == "1"
-PTAU_POWER    = int(os.environ.get("ZKP_PTAU_POWER", "14"))  # 14 recommandé pour ~8k contraintes
+PTAU_POWER    = int(os.environ.get("ZKP_PTAU_POWER", "18"))  
 
 
 # -------------------------------
@@ -165,7 +166,7 @@ def _ensure_circuit_built(
 
     # Compiler si wasm/r1cs manquent
     if not (os.path.exists(wasm) and os.path.exists(r1cs)):
-        _run(f"circom {circom_file} --r1cs --wasm --sym -o {circuit_dir}")
+        _run(f"circom {circom_file} --r1cs --wasm --sym -l /app/node_modules -o {circuit_dir}")
 
     # Setup Groth16 + vkey si besoin
     if not os.path.exists(zkey):
@@ -182,17 +183,23 @@ def prove_round_chunks(
     circuit_dir: str = CIRCUIT_DIR,
     ptau_path: str = PTAU_PATH,
 ) -> int:
-    """
-    Pour chaque input_chunk_*.json, génère witness/proof/public et vérifie la preuve.
-    Retourne le nombre de chunks traités.
-    """
     _ensure_circuit_built(circuit_dir, ptau_path)
 
     wasm = os.path.join(circuit_dir, "avg2_chunk_js", "avg2_chunk.wasm")
     genw = os.path.join(circuit_dir, "avg2_chunk_js", "generate_witness.js")
     zkey = os.path.join(circuit_dir, "avg2_chunk_final.zkey")
     vkey = os.path.join(circuit_dir, "verification_key.json")
-    inputs_dir = os.path.join(round_dir, "inputs")
+
+    # NOUVEAU: on lit inputs commités (avec merkle) + on injecte roots
+    round_name = os.path.basename(os.path.normpath(round_dir))
+    commits_dir = os.path.join("/app/commits", round_name)
+    inputs_dir  = os.path.join(commits_dir, "inputs")
+
+    roots_path = os.path.join(commits_dir, "roots.json")
+    with open(roots_path) as f:
+        roots = json.load(f)
+    root_w1 = int(roots["root_w1"])
+    root_w2 = int(roots["root_w2"])
 
     input_files = sorted(glob.glob(os.path.join(inputs_dir, "input_chunk_*.json")))
     if not input_files:
@@ -205,12 +212,28 @@ def prove_round_chunks(
         proof = os.path.join(round_dir, f"proof_{k}.json")
         publ  = os.path.join(round_dir, f"public_{k}.json")
 
-        _run(f"node {genw} {wasm} {inp} {wtns}")
+        # Charger l'input enrichi et injecter les roots publiques
+        with open(inp) as f:
+            payload = json.load(f)
+        payload["root_w1"] = root_w1
+        payload["root_w2"] = root_w2
+        # chunkIndex est déjà dedans (ajouté lors du commit); sinon:
+        # payload.setdefault("chunkIndex", int(k))
+
+        # Écrire un input temporaire à passer au witness
+        tmp_inp = os.path.join(round_dir, f"_inp_{k}.json")
+        with open(tmp_inp, "w") as f:
+            json.dump(payload, f)
+
+        _run(f"node {genw} {wasm} {tmp_inp} {wtns}")
         _run(f"snarkjs groth16 prove {zkey} {wtns} {proof} {publ}")
         _run(f"snarkjs groth16 verify {vkey} {publ} {proof}")
+
+        os.remove(tmp_inp)
         done += 1
 
     return done
+
 
 
 # -------------------------------
@@ -222,8 +245,17 @@ def export_and_maybe_prove(round_dir: str) -> None:
     Si ZKP_AUTOPROVE=1, enchaîne sur witness → prove → verify.
     """
     n = export_inputs_for_round(round_dir, DEFAULT_SCALE, DEFAULT_CHUNK)
+    on_round_proved(round_dir)
     if AUTOPROVE:
         c = prove_round_chunks(round_dir, CIRCUIT_DIR, PTAU_PATH)
         print(f"[ZKP] Round {os.path.basename(round_dir)} : {c}/{n} chunks prouvés et vérifiés.")
     else:
         print(f"[ZKP] Round {os.path.basename(round_dir)} : {n} chunks exportés (AUTO_PROVE désactivé).")
+
+
+
+
+
+def on_round_proved(round_dir: str, commits_root: str = "/app/commits"):
+    out_dir = integrate_commitments_for_round(round_dir, commits_root=commits_root)
+    print(f"[Commitments] {os.path.basename(os.path.normpath(round_dir))} -> {out_dir}")

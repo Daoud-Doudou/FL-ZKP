@@ -1,0 +1,23 @@
+{
+  "name": "fl-zkp",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "commit:all": "python3 tools/commit_all.py ./shared-data/zkp ./commits",
+    "commit:round1": "python3 tools/commit_round.py ./shared-data/zkp/round1 ./commits/round1",
+    "commit:round2": "python3 tools/commit_round.py ./shared-data/zkp/round2 ./commits/round2",
+    "commit:round3": "python3 tools/commit_round.py ./shared-data/zkp/round3 ./commits/round3"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "circomlib": "^2.0.5",
+    "circomlibjs": "^0.1.7",
+    "ffjavascript": "^0.3.1",
+    "snarkjs": "^0.7.5"
+  }
+}
+
