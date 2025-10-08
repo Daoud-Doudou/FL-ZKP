@@ -49,8 +49,7 @@ class MyCustomFedAvg(FedAvg):
                     with open(os.path.join(save_dir, "avg.json"), "w") as f:
                         json.dump({"avg": w_avg_flat}, f, indent=2)
 
-                # NE PLUS écrire meta.json ici (zkp_utils le fera)
-                # ✅ Appel central : export des chunks (+ prove/verify si ZKP_AUTOPROVE=1)
+                #  Appel central : export des chunks (+ prove/verify si ZKP_AUTOPROVE=1)
                 export_and_maybe_prove(save_dir)
 
         except Exception as e:

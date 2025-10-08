@@ -17,7 +17,7 @@ CIRCUIT_DIR   = os.environ.get("ZKP_CIRCUIT_DIR", "/app/zkp/avg_chunk")
 PTAU_PATH     = os.environ.get("ZKP_PTAU", "/app/shared/zkp/ptau/powersOfTau28_hez_final_18.ptau")
 AUTOPROVE     = os.environ.get("ZKP_AUTOPROVE", "0") == "1"
 PTAU_GEN      = os.environ.get("ZKP_PTAU_GEN", "0") == "1"
-PTAU_POWER    = int(os.environ.get("ZKP_PTAU_POWER", "18"))  
+PTAU_POWER    = int(os.environ.get("ZKP_PTAU_POWER", "20"))  
 
 
 # -------------------------------

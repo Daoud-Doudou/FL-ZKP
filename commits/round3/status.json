@@ -1,8 +1,0 @@
-{
-  "round_dir": "/app/shared/zkp/round3",
-  "params": {
-    "scale": 1000000,
-    "chunk": 4096
-  },
-  "commitments": "OK"
-}
